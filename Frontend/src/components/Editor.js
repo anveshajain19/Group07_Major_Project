@@ -1,21 +1,33 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
 import Codemirror from 'codemirror';
 import 'codemirror/lib/codemirror.css';
 import 'codemirror/theme/dracula.css';
 import 'codemirror/mode/javascript/javascript';
 import 'codemirror/addon/edit/closetag';
 import 'codemirror/addon/edit/closebrackets';
-// import { Socket } from 'socket.io';
 import ACTIONS from '../Actions';
 
-const Editor = ({socketRef, roomId, selectedLanguage, onCodeChange}) => {
+const Editor = ({ socketRef, roomId, selectedLanguage, onCodeChange }) => {
   const editorRef = useRef(null);
+
+  // UseCallback to prevent unnecessary re-renders
+  const handleCodeChange = useCallback((code) => {
+    onCodeChange(code); // Trigger parent function
+    if (socketRef.current) {
+      socketRef.current.emit(ACTIONS.CODE_CHANGE, {
+        roomId,
+        code,
+        selectedLanguage,
+      });
+    }
+  }, [onCodeChange, roomId, selectedLanguage, socketRef]);
+
   useEffect(() => {
-    async function init() {
+    const initEditor = () => {
       editorRef.current = Codemirror.fromTextArea(
-        document.getElementById('realtimeEditor'), 
+        document.getElementById('realtimeEditor'),
         {
-          mode: {name: 'javascript', json: true},
+          mode: { name: selectedLanguage || 'javascript', json: true }, // Dynamically set language
           theme: 'dracula',
           autoCloseTags: true,
           autoCloseBrackets: true,
@@ -24,39 +36,41 @@ const Editor = ({socketRef, roomId, selectedLanguage, onCodeChange}) => {
       );
 
       editorRef.current.on('change', (instance, changes) => {
-        // console.log('changes', changes);
-        const {origin} = changes;
+        const { origin } = changes;
         const code = instance.getValue();
-        onCodeChange(code);
-        if(origin !== 'setValue') {
-          socketRef.current.emit(ACTIONS.CODE_CHANGE, {
-            roomId,
-            code,
-            selectedLanguage
-          });
+        if (origin !== 'setValue') {
+          handleCodeChange(code); // Use the wrapped function
         }
-        // console.log(code);
       });
-    }
-    init();
-  }, []);
+    };
+
+    initEditor();
+
+    // Cleanup function for component unmount
+    return () => {
+      if (editorRef.current) {
+        editorRef.current.toTextArea();
+      }
+    };
+  }, [handleCodeChange, selectedLanguage]);
 
   useEffect(() => {
-    if(socketRef.current) {
-      socketRef.current.on(ACTIONS.CODE_CHANGE, ({code}) => {
-        if(code !== null){
+    const socket = socketRef.current;
+    if (socket) {
+      socket.on(ACTIONS.CODE_CHANGE, ({ code }) => {
+        if (code !== null && editorRef.current) {
           editorRef.current.setValue(code);
         }
       });
-    }
 
-    return () => {
-      socketRef.current.off(ACTIONS.CODE_CHANGE);
+      // Cleanup socket listener on unmount
+      return () => {
+        socket.off(ACTIONS.CODE_CHANGE);
+      };
     }
-  }, [socketRef.current]);
+  }, [socketRef]);
 
-  return <textarea id="realtimeEditor"></textarea> ;
-  
+  return <textarea id="realtimeEditor"></textarea>;
 };
 
-export default Editor
+export default Editor;
