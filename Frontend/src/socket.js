@@ -5,8 +5,7 @@ import { io } from 'socket.io-client';
  * @returns {Socket} - A Socket.IO client instance.
  */
 export const initSocket = async () => {
-    const backendURL = process.env.REACT_APP_BACKEND_URL;
-
+    const backendURL = "https://group07-major-project00.onrender.com:5000" ;
     if (!backendURL) {
         console.error("REACT_APP_BACKEND_URL is not defined in the environment variables.");
         throw new Error("Backend URL not provided. Please check your environment configuration.");
