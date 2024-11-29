@@ -12,7 +12,7 @@ const io = new Server(server, {
     cors: {
         origin: process.env.NODE_ENV === "production"
             ? process.env.FRONTEND_URL // Use Render's frontend URL in production
-            : "http://localhost:3000", // Use localhost during development
+            : "https://group07-major-project00.onrender.com:3000", // Use localhost during development
         methods: ["GET", "POST"],
     },
 });
